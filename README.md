@@ -4,7 +4,7 @@
 ## http client 설계
 ---
 ### requests package  
-#### requests.get(url, request\_header\_dict, callback)  return:: response\_header\_dict, contents  
+#### requests.get(url, request\_header\_dict)  return:: status\_line, response\_header\_dict, contents  
 
 url과 필요시 request header dictionary를 퍼래미터로 받으면  
 해당 url의 웹 서버로 http GET request를 날린다.  
@@ -33,7 +33,7 @@ socket 통신을 통해 웹 서버로 request message를 전송한다.
       - Status Code가 3xx라면
         - 3xx가 아닐때까지 계속 get을 요청한다.  
 
-#### request.post(url, body, request\_header\_dict, callback)  return::  response\_header\_dict, contents
+#### request.post(url, body, request\_header\_dict, request\_body\_dict)  return::  status\_line, response\_header\_dict, contents
 url과 body, request header dictionary를 퍼래미터로 받으면  
 해당 url의 웹 서버로 http POST request를 날린다.  
 
@@ -61,4 +61,4 @@ socket 통신을 통해 웹 서버로 request message를 전송한다.
       - return된 Status Code가 3xx가 아니라면
         - Response Headers와 Response Body를 포멧팅 후 return 한다.
       - Status Code가 3xx라면
-        - 3xx가 아닐때까지 계속 get을 요청한다.  
+        - 3xx가 아닐때까지 계속 get을 요청한다.
