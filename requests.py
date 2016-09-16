@@ -10,16 +10,15 @@ def get(url, headers={}):
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	s.connect((host + path, port))
 	
-	request_message = construct_request_msg(
+	request_message = construct_get_request_msg(
 			host, path, params, headers
 			)
 	s.send(request_message)
 	response_message = b'' 
-
+	
 	first_recv = True
 	while True:
 		response = s.recv(BUFFER_SIZE)
-	
 		if first_recv is True:
 			first_recv = False
 			status_line, response_header_dict, contents = deconstruct_response(response)
@@ -36,9 +35,8 @@ def get(url, headers={}):
 				first_recv = True
 			elif status_code.startswith(b'4') is True:
 				""" chunk 인코딩 헤더가 있으면 contents 연결 """
-				if b'Transfer-Encoding' in response_header_dict:
-					if response_header_dict[b'Transfer-Encoding'] == b'chunked':
-						contents = concat_chunked_msg(response_header_dict, contents)
+				if is_chunked_encoded(response_header_dict) is True:
+					contents = concat_chunked_msg(response_header_dict, contents)
 				print_response_msg(status_line, response_header_dict, contents)			
 		else: 
 			contents += response
@@ -47,15 +45,59 @@ def get(url, headers={}):
 			break
 	
 	s.close()
-	
-	contents = concat_chunked_msg(response_header_dict, contents)
+	if is_chunked_encoded(response_header_dict) is True:
+		contents = concat_chunked_msg(response_header_dict, contents)
 	return decode_response_msg(status_line, response_header_dict, contents)
+
+
+def post(host, resource_location, data, headers={}):
+	port = get_port_from_host(host)
+
+	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	s.connect((host, port))
+	
+	request_message = construct_post_request_msg(
+			host, resource_location, headers, data
+			)
+	s.send(request_message)
+	response_message = b'' 
+	
+	print(request_message)
+
+	first_recv = True
+	while True:
+		response = s.recv(BUFFER_SIZE)
+
+		print(response)
+		if first_recv is True:
+			first_recv = False
+			status_line, response_header_dict, contents = deconstruct_response(response)
+			status_code = extract_status_code(status_line) 
+		else: 
+			contents += response
+	
+		if response == b'': 
+			break
+	
+	s.close()
+	
+	if is_chunked_encoded(response_header_dict) is True:
+		contents = concat_chunked_msg(response_header_dict, contents)
+	
+	return decode_response_msg(status_line, response_header_dict, contents)
+
+
+def is_chunked_encoded(response_header_dict):
+	if b'Transfer-Encoding' in response_header_dict:
+		if response_header_dict[b'Transfer-Encoding'] == b'chunked':
+			return True
+	return False
 
 
 def print_response_msg(status_line, response_header_dict, contents):
 	print(status_line)
-	for key in response_header_dict:
-		print(key, ': ', response_header_dict[key])
+	for key, value in response_header_dict.items():
+		print(key, ': ', value)
 	print(contents)
 
 
@@ -88,10 +130,12 @@ def detach_scheme(url):
 
 def concat_chunked_msg(headers, chunked_msg):
 	contents_parts = chunked_msg.split(b'\r\n')
+	print('first part: %s' % contents_parts[0] )
 	chunked_len = int(contents_parts[0], 16)
 	concat_msg = b''
 	is_trailer = False
 	
+
 	for item in contents_parts[1:]:
 		if is_trailer is False:
 			if chunked_len == 0:
@@ -108,7 +152,30 @@ def concat_chunked_msg(headers, chunked_msg):
 	return concat_msg
 
 
-def construct_request_msg(host, path, params, headers):
+def construct_post_request_body(data_dict):
+	data_list = [key + '=' + value for key, value in data_dict.items()]
+	message_body = '&'.join(data_list)
+	return message_body
+
+
+def construct_post_request_msg(host, resource_location, headers, body_dict):
+	request_message = 'POST '
+	request_message += resource_location
+	
+	header_str = dict_to_header(host, headers)
+
+	request_body = construct_post_request_body(body_dict)
+	header_str += 'Content-Length: %s\r\n' % len(request_body.encode())
+
+	request_message += ' HTTP/1.1\r\n' + header_str + '\r\n'
+	request_message += request_body + '\r\n' 
+
+	request_message = request_message.encode()
+	
+	return request_message
+
+
+def construct_get_request_msg(host, path, params, headers):
 	request_message = 'GET '
 	request_message += '/' + path
 
@@ -133,8 +200,8 @@ def get_port_from_host(host):
 def dict_to_header(host, header_dict):
 	header_str = ''
 	header_str += 'Host: %s\r\n' % host
-	for key in header_dict.keys():
-		header_str += key + ': ' + header_dict[key] + '\r\n'
+	for key, value in header_dict.items():
+		header_str += key + ': ' + value + '\r\n'
 	return header_str
 
 
@@ -146,7 +213,6 @@ def header_list_to_header_dict(header_list):
 
 
 def header_to_dict(header_str):
-	#header_str = header_str.decode('utf-8')
 	field_name, field_value = header_str.split(b': ')
 	return {field_name: field_value}
 
@@ -171,13 +237,12 @@ def deconstruct_url(url):
 	
 	return host, path, params
 
-#print(get('www.naver.com'))
+#headers = {'Content-Type': 'text/plain'}
+#data = {'item': 'bandsaw 2647'}
 
-#get('www.google.co.kr/?gfe_rd=cr&ei=q8faV_CNNYnB9AXcjJ-IBA')
+#status_line, headers, contents = post('www.joes-hardware.com', '/inventory-check.cgi', data, headers)
 
-status_line, headers, contents = get('www.naver.com')
+#print(status_line)
 #print(headers)
-
-#print(get('www.google.com'))
-#print(get('www.google.co.kr/?gfe_rd=cr&ei=RY7aV5SbNoSE2QSdna_ABg'))
+#print(contents)
 
