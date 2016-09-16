@@ -17,9 +17,9 @@ request message를 웹 서버로 전송한다.
 
 request message를 날릴 때,  
 1. Request Line  
-2. CLRF  
-3. Request Header  
-4. CLRF CLRF  
+2. CRLF  
+3. Request Headers  
+4. CRLF CRLF  
 의 형태로 Request message를 형성한 후에  
 socket 통신을 통해 웹 서버로 request message를 전송한다.  
 
@@ -45,11 +45,11 @@ request message를 웹 서버로 전송한다.
 
 request message를 날릴 때,  
 1. Request Line  
-2. CLRF  
+2. CRLF 
 3. Request Header  
-4. CLRF  
-5. body  
-6. CLRF, CLRF  
+4. CRLF CRLF 
+6. body  
+7. CRLF
 의 형태로 Request message를 형성한 후에  
 socket 통신을 통해 웹 서버로 request message를 전송한다.  
 
