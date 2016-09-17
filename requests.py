@@ -30,7 +30,7 @@ def get(url, headers={}):
                 # chunk 인코딩 헤더가 있으면 contents 연결
                 if is_chunked_encoded(response_header_dict) is True:
                     contents = concat_chunked_msg(response_header_dict, contents)
-                print_response_msg(status_line, response_header_dict, contents)
+                print_response_msg_with_decoding(status_line, response_header_dict, contents)
         else:
             contents += response
 
@@ -69,7 +69,7 @@ def post(host, resource_location, data, headers={}):
                 """ chunk 인코딩 헤더가 있으면 contents 연결 """
                 if is_chunked_encoded(response_header_dict) is True:
                     contents = concat_chunked_msg(response_header_dict, contents)
-                print_response_msg(status_line, response_header_dict, contents)
+                print_response_msg_with_decoding(status_line, response_header_dict, contents)
         else:
             contents += response
         if response == b'':
@@ -108,6 +108,13 @@ def is_chunked_encoded(response_header_dict):
         if response_header_dict[b'Transfer-Encoding'] == b'chunked':
             return True
     return False
+
+
+def print_response_msg_with_decoding(status_line, response_header_dict, contents):
+    print(status_line.decode())
+    for key, value in response_header_dict.items():
+        print(key.decode(), ': ', value.decode())
+    print(contents.decode())
 
 
 def print_response_msg(status_line, response_header_dict, contents):
