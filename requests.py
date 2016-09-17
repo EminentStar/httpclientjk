@@ -23,17 +23,12 @@ def get(url, headers={}):
 			first_recv = False
 			status_line, response_header_dict, contents = deconstruct_response(response)
 			status_code = extract_status_code(status_line) 
-			
-			if status_code.startswith(b'3') is True:
-				"""request message 재구성 및 s.send"""
-				request_message = b''
-				new_request_header_dict = {}	
-				"리다이렉션시 바꿔야할 것은 Location 헤더를 Host로"
-				new_host, new_path, new_params = deconstruct_url(response_header_dict[b'Location'].decode())
-				new_request_message = construct_request_msg(new_host, new_path, new_params,new_request_header_dict)
+		
+			if is_redirection_response(status_code):
+				new_request_message = construct_redirection_msg(response_header_dict)
 				s.send(new_request_message)
 				first_recv = True
-			elif status_code.startswith(b'4') is True:
+			elif is_client_error_response(status_code): 
 				""" chunk 인코딩 헤더가 있으면 contents 연결 """
 				if is_chunked_encoded(response_header_dict) is True:
 					contents = concat_chunked_msg(response_header_dict, contents)
@@ -62,20 +57,25 @@ def post(host, resource_location, data, headers={}):
 	s.send(request_message)
 	response_message = b'' 
 	
-	print(request_message)
-
 	first_recv = True
 	while True:
 		response = s.recv(BUFFER_SIZE)
-
-		print(response)
 		if first_recv is True:
 			first_recv = False
 			status_line, response_header_dict, contents = deconstruct_response(response)
 			status_code = extract_status_code(status_line) 
+			
+			if is_redirection_response(status_code):
+				new_request_message = construct_redirection_msg(response_header_dict)
+				s.send(new_request_message)
+				first_recv = True
+			elif is_client_error_response(status_code):
+				""" chunk 인코딩 헤더가 있으면 contents 연결 """
+				if is_chunked_encoded(response_header_dict) is True:
+					contents = concat_chunked_msg(response_header_dict, contents)
+				print_response_msg(status_line, response_header_dict, contents)			
 		else: 
 			contents += response
-	
 		if response == b'': 
 			break
 	
@@ -85,6 +85,23 @@ def post(host, resource_location, data, headers={}):
 		contents = concat_chunked_msg(response_header_dict, contents)
 	
 	return decode_response_msg(status_line, response_header_dict, contents)
+
+
+def is_redirection_response(status_code):
+	return status_code.startswith(b'3') is True
+
+
+def is_client_error_response(status_code):
+	return status_code.startswith(b'4') is True
+
+
+def construct_redirection_msg(response_header_dict):
+	"""request message 재구성 및 s.send"""
+	new_request_header_dict = {}	
+	"리다이렉션시 바꿔야할 것은 Location 헤더를 Host로"
+	new_host, new_path, new_params = deconstruct_url(response_header_dict[b'Location'].decode())
+	new_request_message = construct_get_request_msg(new_host, new_path, new_params,new_request_header_dict)
+	return new_request_message
 
 
 def is_chunked_encoded(response_header_dict):
@@ -130,7 +147,6 @@ def detach_scheme(url):
 
 def concat_chunked_msg(headers, chunked_msg):
 	contents_parts = chunked_msg.split(b'\r\n')
-	print('first part: %s' % contents_parts[0] )
 	chunked_len = int(contents_parts[0], 16)
 	concat_msg = b''
 	is_trailer = False
@@ -236,13 +252,4 @@ def deconstruct_url(url):
 			params = path_parts[1]
 	
 	return host, path, params
-
-#headers = {'Content-Type': 'text/plain'}
-#data = {'item': 'bandsaw 2647'}
-
-#status_line, headers, contents = post('www.joes-hardware.com', '/inventory-check.cgi', data, headers)
-
-#print(status_line)
-#print(headers)
-#print(contents)
 
