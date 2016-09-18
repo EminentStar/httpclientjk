@@ -1,4 +1,5 @@
 import socket
+import multipart
 
 BUFFER_SIZE = 1024
 
@@ -43,13 +44,13 @@ def get(url, headers={}):
     return decode_response_msg(status_line, response_header_dict, contents)
 
 
-def post(host, resource_location, data, headers={}):
+def post(host, resource_location, data, form_data=[], headers={}):
     port = get_port_from_host(host)
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((host, port))
 
-    request_message = construct_post_request_msg(host, resource_location, headers, data)
+    request_message = construct_post_request_msg(host, resource_location, headers, data, form_data)
     s.send(request_message)
     response_message = b''
 
@@ -176,13 +177,15 @@ def construct_post_request_body(data_dict):
     return message_body
 
 
-def construct_post_request_msg(host, resource_location, headers, body_dict):
+def construct_post_request_msg(host, resource_location, headers, body_dict, form_data):
     request_message = 'POST '
     request_message += resource_location
     header_str = dict_to_header(host, headers)
-
+    
     request_body = construct_post_request_body(body_dict)
     header_str += 'Content-Length: %s\r\n' % len(request_body.encode())
+    if form_data:
+        header_str += multipart.construct_multipart_file_header_and_body()
 
     request_message += ' HTTP/1.1\r\n' + header_str + '\r\n'
     request_message += request_body + '\r\n'
