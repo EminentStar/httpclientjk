@@ -2,6 +2,8 @@ import socket
 import multipart
 
 BUFFER_SIZE = 1024
+CRLF = '\r\n'
+CRLF = b'\r\n'
 
 
 def get(url, headers={}):
@@ -136,8 +138,8 @@ def decode_response_msg(status_line, header_dict, contents):
 
 
 def deconstruct_response(response_chunk):
-    response_list = response_chunk.split(b'\r\n\r\n')
-    headers = response_list[0].split(b'\r\n')
+    response_list = response_chunk.split(CRLF_ENCODED*2)
+    headers = response_list[0].split(CRLF_ENCODED)
     status_line = headers.pop(0)
     header_dict = header_list_to_header_dict(headers)
     contents = response_list[1]
@@ -151,7 +153,7 @@ def detach_scheme(url):
 
 
 def concat_chunked_msg(headers, chunked_msg):
-    contents_parts = chunked_msg.split(b'\r\n')
+    contents_parts = chunked_msg.split(CRLF_ENCODED)
     chunked_len = int(contents_parts[0], 16)
     concat_msg = b''
     is_trailer = False
@@ -183,12 +185,12 @@ def construct_post_request_msg(host, resource_location, headers, body_dict, form
     header_str = dict_to_header(host, headers)
     
     request_body = construct_post_request_body(body_dict)
-    header_str += 'Content-Length: %s\r\n' % len(request_body.encode())
+    header_str += 'Content-Length: %s%s' % (len(request_body.encode()), CRLF)
     if form_data:
         header_str += multipart.construct_multipart_file_header_and_body()
 
-    request_message += ' HTTP/1.1\r\n' + header_str + '\r\n'
-    request_message += request_body + '\r\n'
+    request_message += ' HTTP/1.1' + CRLF + header_str + CRLF
+    request_message += request_body + CRLF 
 
     request_message = request_message.encode()
     return request_message
@@ -201,7 +203,7 @@ def construct_get_request_msg(host, path, params, headers):
     if params:
         request_message += '?' + params
     header_str = dict_to_header(host, headers)
-    request_message += ' HTTP/1.1\r\n' + header_str + '\r\n'
+    request_message += ' HTTP/1.1' + CRLF + header_str + CRLF
     request_message = request_message.encode()
     return request_message
 
@@ -216,9 +218,9 @@ def get_port_from_host(host):
 
 def dict_to_header(host, header_dict):
     header_str = ''
-    header_str += 'Host: %s\r\n' % host
+    header_str += 'Host: %s%s' % (host, CRLF)
     for key, value in header_dict.items():
-        header_str += key + ': ' + value + '\r\n'
+        header_str += key + ': ' + value + CRLF 
     return header_str
 
 
