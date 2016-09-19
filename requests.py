@@ -1,9 +1,10 @@
 import socket
 import multipart
 
+TIMEOUT_SEC = 5
 BUFFER_SIZE = 1024
 CRLF = '\r\n'
-CRLF = b'\r\n'
+CRLF_ENCODED = b'\r\n'
 
 
 def get(url, headers={}):
@@ -13,31 +14,37 @@ def get(url, headers={}):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((host + path, port))
 
+    s.settimeout(TIMEOUT_SEC)
+
     request_message = construct_get_request_msg(host, path, params, headers)
     s.send(request_message)
     response_message = b''
+    
 
     first_recv = True
     while True:
-        response = s.recv(BUFFER_SIZE)
-        if first_recv is True:
-            first_recv = False
-            status_line, response_header_dict, contents = deconstruct_response(response)
-            status_code = extract_status_code(status_line)
+        try:
+            response = s.recv(BUFFER_SIZE)
+            if first_recv is True:
+                first_recv = False
+                status_line, response_header_dict, contents = deconstruct_response(response)
+                status_code = extract_status_code(status_line)
 
-            if is_redirection_response(status_code):
-                new_request_message = construct_redirection_msg(response_header_dict)
-                s.send(new_request_message)
-                first_recv = True
-            elif is_client_error_response(status_code):
-                # chunk 인코딩 헤더가 있으면 contents 연결
-                if is_chunked_encoded(response_header_dict) is True:
-                    contents = concat_chunked_msg(response_header_dict, contents)
-                print_response_msg_with_decoding(status_line, response_header_dict, contents)
-        else:
-            contents += response
+                if is_redirection_response(status_code):
+                    new_request_message = construct_redirection_msg(response_header_dict)
+                    s.send(new_request_message)
+                    first_recv = True
+                elif is_client_error_response(status_code):
+                    # chunk 인코딩 헤더가 있으면 contents 연결
+                    if is_chunked_encoded(response_header_dict) is True:
+                        contents = concat_chunked_msg(response_header_dict, contents)
+            else:
+                contents += response
 
-        if response == b'':
+            if response == b'':
+                break
+        except socket.timeout:
+            print('TCP timeout occured')
             break
 
     s.close()
@@ -253,3 +260,4 @@ def deconstruct_url(url):
         if len(path_parts) != 1:
             params = path_parts[1]
     return host, path, params
+
