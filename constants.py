@@ -1,0 +1,5 @@
+TIMEOUT_SEC = 5
+BUFFER_SIZE = 1024
+CRLF = '\r\n'
+CRLF_ENCODED = b'\r\n'
+
