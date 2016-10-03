@@ -1,9 +1,8 @@
 # httpclientjk
-----
 [![Build Status](https://api.travis-ci.org/EminentStar/httpclientjk.svg)](http://travis-ci.org/EminentStar/httpclientjk)
+[![Coverage Status](https://coveralls.io/repos/github/EminentStar/httpclientjk/badge.svg?branch=master)](https://coveralls.io/github/EminentStar/httpclientjk?branch=master)
 
 ## http client 설계
----
 ### requests package  
 #### requests.get(url, request\_header\_dict)  return:: status\_line, response\_header\_dict, contents  
 
