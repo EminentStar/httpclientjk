@@ -1,5 +1,6 @@
 # httpclientjk
 ----
+[![Build Status](https://api.travis-ci.org/EminentStar/httpclientjk.svg)](http://travis-ci.org/EminentStar/httpclientjk)
 
 ## http client 설계
 ---
